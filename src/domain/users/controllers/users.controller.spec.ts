@@ -18,11 +18,7 @@ describe('UsersController', () => {
         {
           provide: UsersService,
           useValue: {
-            create: () =>
-              ResponseHelper.success(
-                getMockUser(),
-                'User with email already exist',
-              ),
+            create: () => ResponseHelper.success(getMockUser(), 'User created'),
           },
         },
       ],
@@ -47,7 +43,7 @@ describe('UsersController', () => {
     const response = await controller.create(validUser);
 
     // THEN
-    expect(response.message).toBe('User with email already exist');
+    expect(response.message).toBe('User created');
   });
 
   it('should validate all inputs', async () => {
@@ -99,14 +95,14 @@ describe('UsersController', () => {
   });
 });
 
-function getMockUser(params?: Partial<IUser>): IUser {
+export function getMockUser(params?: Partial<IUser>): IUser {
   return {
-    _id: params?._id || new Types.ObjectId(),
-    id: params?.id || 'string',
-    first_name: params?.first_name || 'string',
-    last_name: params?.last_name || 'string',
-    email: params?.email || 'string',
-    phone_number: params?.phone_number || 'string',
+    _id: params?._id || new Types.ObjectId('633699cdde5de039b55648fb'),
+    id: params?.id || '633699cdde5de039b55648fb',
+    first_name: params?.first_name || 'John',
+    last_name: params?.last_name || 'Doe',
+    email: params?.email || 'johndoe@mail.com',
+    phone_number: params?.phone_number || '08012341234',
     dob: params?.dob || new Date('1999-01-01'),
     created_at: params?.created_at || new Date(),
     updated_at: params?.updated_at || new Date(),

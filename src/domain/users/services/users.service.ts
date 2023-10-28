@@ -27,10 +27,10 @@ export class UsersService {
     try {
       const createdUser = await this.usersModel.create(createUserDto);
       // TODO: ADD USER CREATION NOTIFICATION
-      return ResponseHelper.success(createdUser, 'c');
+      return ResponseHelper.success(createdUser, 'User created successfully');
     } catch (error) {
       console.log('CreateUserError', error);
-      return ResponseHelper.error('Unknown error', null);
+      throw new HttpException('Unknown error', 500);
     }
   }
 
