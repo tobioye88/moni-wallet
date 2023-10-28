@@ -7,7 +7,7 @@ export class AppService {
   constructor(private readonly configService: ConfigService) {}
 
   getHello(): IResponseHelper<null> {
-    const APP_NAME = this.configService.get<String>('APP_NAME', '');
+    const APP_NAME = this.configService.get<string>('APP_NAME', '');
     return { message: `Welcome to ${APP_NAME}`, data: null };
   }
 }
