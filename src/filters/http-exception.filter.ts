@@ -14,10 +14,13 @@ export class HttpExceptionFilter implements ExceptionFilter<Error> {
     const response = ctx.getResponse<Response>();
     // const request = ctx.getResponse<Request>();
     const status = exception?.getStatus ? exception?.getStatus() : 500;
+    const exResponse = exception.getResponse();
+    const data =
+      typeof exResponse == 'object' ? exResponse['message'] : exResponse;
 
     response.status(status).json({
       message: exception.message,
-      data: null,
+      data: data,
     } as IResponseHelper<null>);
   }
 }

@@ -7,16 +7,29 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { CreateUserDto } from '../dto/create-user.dto';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { IResponseHelper } from '../../../helpers/response.helper';
+import { CreateUserDto, CreateUserResponseDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { IUser } from '../interfaces/user.interface';
 import { UsersService } from '../services/users.service';
 
+@ApiTags('Users')
 @Controller('v1/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
+  @ApiOperation({
+    summary: 'Create a new user',
+  })
+  @ApiResponse({
+    status: 201,
+    type: CreateUserResponseDto,
+  })
+  create(
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<IResponseHelper<IUser>> {
     return this.usersService.create(createUserDto);
   }
 
