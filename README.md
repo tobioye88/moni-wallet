@@ -1,2 +1,14 @@
-# moni-wallet
-A mini wallet system to track expenses.
+# Moni Wallet
+
+A mini wallet to track expenses
+Framework: Nestjs
+
+## Start application
+```
+npm run start
+```
+
+## Test application
+```
+npm run test
+```
