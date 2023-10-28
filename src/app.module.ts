@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseConfigOption } from './database/config/database.config.option';
 import { UsersModule } from './domain/users/users.module';
+import { WalletsModule } from './domain/wallets/wallets.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UsersModule } from './domain/users/users.module';
     }),
     MongooseModule.forRootAsync({ useClass: DatabaseConfigOption }),
     UsersModule,
+    WalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

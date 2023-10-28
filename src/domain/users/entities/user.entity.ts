@@ -1,7 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { IUser } from '../interfaces/user.interface';
-@Schema()
+
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  versionKey: false,
+  toJSON: {
+    transform: (doc, ret) => {
+      ret.id = ret._id;
+      delete ret._id;
+    },
+  },
+})
 export class User implements IUser {
   @Prop({ required: true, trim: true })
   first_name: string;

@@ -25,28 +25,26 @@ export class UsersService {
     }
 
     try {
-      const createdUser = await this.usersModel.create(createUserDto);
-      // TODO: ADD USER CREATION NOTIFICATION
+      const createdUser = await this.usersModel.create<IUser>(createUserDto);
+      await this.notifyUserAccountCreation(createdUser);
       return ResponseHelper.success(createdUser, 'User created successfully');
     } catch (error) {
       console.log('CreateUserError', error);
       throw new HttpException('Unknown error', 500);
     }
   }
-
-  findAll() {
-    return `This action returns all users`;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async notifyUserAccountCreation(createdUser: IUser) {
+    // send emails here
+    // send sms here
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
+  async findOne(userId: string): Promise<IUser> {
+    const user = await this.usersModel.findById<IUser>(userId);
+    if (!user) {
+      throw new HttpException('User not found', 404);
+    }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    return user;
   }
 }
