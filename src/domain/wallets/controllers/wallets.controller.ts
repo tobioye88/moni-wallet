@@ -1,9 +1,14 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ResponseHelper } from '../../../helpers/response.helper';
 import {
   CreateWalletDto,
   CreateWalletResponseDto,
 } from '../dto/create-wallet.dto';
+import {
+  TransferToAnotherWalletDto,
+  TransferToAnotherWalletResponseDto,
+} from '../dto/transfer-to-another-wallet';
 import { WalletsService } from '../services/wallets.service';
 
 @ApiTags('Wallets')
@@ -19,12 +24,31 @@ export class WalletsController {
     status: 201,
     type: CreateWalletResponseDto,
   })
-  create(@Body() createWalletDto: CreateWalletDto) {
-    return this.walletsService.create(createWalletDto);
+  async create(@Body() createWalletDto: CreateWalletDto) {
+    const wallet = await this.walletsService.create(createWalletDto);
+    return ResponseHelper.success(wallet, 'Wallet successfully created');
+  }
+
+  @Post('transfer')
+  @ApiOperation({
+    summary: 'Transfer from one wallet to another',
+    description: 'Amount can only be in kobo',
+  })
+  @ApiResponse({
+    status: 201,
+    type: TransferToAnotherWalletResponseDto,
+  })
+  async transferToAnotherWallet(
+    @Body() transferDto: TransferToAnotherWalletDto,
+  ) {
+    const response =
+      await this.walletsService.transferToAnotherWallet(transferDto);
+    return ResponseHelper.success(response, 'Transfer successful');
   }
 
   @Get(':walletId')
-  findOne(@Param('walletId') walletId: string) {
-    return this.walletsService.findOne(walletId);
+  async findOne(@Param('walletId') walletId: string) {
+    const wallet = await this.walletsService.findOne(walletId);
+    return ResponseHelper.success(wallet);
   }
 }

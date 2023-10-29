@@ -1,5 +1,5 @@
 export class ResponseHelper {
-  static success<T>(data: T, message = 'success'): IResponseHelper<T> {
+  static success<T>(data: T, message = 'Success'): IResponseHelper<T> {
     return { data, message };
   }
 
