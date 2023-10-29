@@ -15,6 +15,11 @@ npm run start
 npm run test
 ```
 
+# Swagger Documentation
+
+Swagger documentation can be found here
+`{{baseUrl}}/docs`
+
 ## Checklist
 
 You are to create a simple P2P wallet system with the following features

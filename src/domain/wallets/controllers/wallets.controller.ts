@@ -5,6 +5,7 @@ import {
   CreateWalletDto,
   CreateWalletResponseDto,
 } from '../dto/create-wallet.dto';
+import { GetWalletByIdDto } from '../dto/get-wallet-by-id.dto';
 import {
   TransferToAnotherWalletDto,
   TransferToAnotherWalletResponseDto,
@@ -47,6 +48,13 @@ export class WalletsController {
   }
 
   @Get(':walletId')
+  @ApiOperation({
+    summary: 'Get wallet by wallet id',
+  })
+  @ApiResponse({
+    status: 200,
+    type: GetWalletByIdDto,
+  })
   async findOne(@Param('walletId') walletId: string) {
     const wallet = await this.walletsService.findOne(walletId);
     return ResponseHelper.success(wallet);
