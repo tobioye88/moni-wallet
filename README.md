@@ -3,7 +3,13 @@
 A mini wallet to track expenses
 Framework: Nestjs
 
-## Start application
+## Start application on DEV mode
+
+```
+npm run start:dev
+```
+
+## Start application on PROD mode
 
 ```
 npm run start
@@ -17,8 +23,9 @@ npm run test
 
 # Swagger Documentation
 
-Swagger documentation can be found here
-`{{baseUrl}}/docs`
+Swagger documentation can be found here `{{baseUrl}}/docs`
+
+`https://ruby-lonely-scallop.cyclic.app/docs`
 
 ## Checklist
 
