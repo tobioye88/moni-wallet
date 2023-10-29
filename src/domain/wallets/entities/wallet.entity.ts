@@ -23,12 +23,6 @@ export class Wallet implements IWallet {
 
   @Prop({ required: true, ref: User.name, type: Types.ObjectId })
   user: IUser;
-
-  // @Prop({ default: new Date() })
-  // created_at?: Date;
-
-  // @Prop({ default: new Date() })
-  // updated_at?: Date;
 }
 
 export type WalletDocument = Wallet & Document;

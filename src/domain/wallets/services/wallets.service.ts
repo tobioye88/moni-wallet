@@ -1,6 +1,6 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ResponseHelper } from '../../../helpers/response.helper';
 import { UsersService } from '../../users/services/users.service';
 import { CreateWalletDto } from '../dto/create-wallet.dto';
@@ -21,25 +21,25 @@ export class WalletsService {
     // validate user
     await this.usersService.findOne(createWalletDto.user_id);
     const existingWallet = await this.walletModel.findOne({
-      user: createWalletDto.user_id,
+      user: new Types.ObjectId(createWalletDto.user_id),
     });
     // check if user doesn't already have a wallet
     if (existingWallet) {
       throw new HttpException(
         `Wallet already exist for user: ${createWalletDto.user_id}`,
-        400,
+        HttpStatus.BAD_REQUEST,
       );
     }
     const newWallet = await this.walletModel.findOneAndUpdate(
-      { user: createWalletDto.user_id },
-      { user: createWalletDto.user_id },
+      { user: new Types.ObjectId(createWalletDto.user_id) },
+      { user: new Types.ObjectId(createWalletDto.user_id) },
       {
         upsert: true,
         new: true,
         populate: { path: 'user', select: { __v: 0 } },
       },
     );
-    // then crate wallet
+    // then create wallet
     return ResponseHelper.success(newWallet, 'Wallet successfully created.');
   }
 

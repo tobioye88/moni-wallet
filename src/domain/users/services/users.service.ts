@@ -1,8 +1,7 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
 import { User, UserDocument } from '../entities/user.entity';
 import { IUser } from '../interfaces/user.interface';
 import {
@@ -21,7 +20,10 @@ export class UsersService {
       email: createUserDto.email,
     });
     if (existingUser) {
-      throw new HttpException('User with email already exist', 400);
+      throw new HttpException(
+        'User with email already exist',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     try {
@@ -30,7 +32,10 @@ export class UsersService {
       return ResponseHelper.success(createdUser, 'User created successfully');
     } catch (error) {
       console.log('CreateUserError', error);
-      throw new HttpException('Unknown error', 500);
+      throw new HttpException(
+        'Unknown error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -42,7 +47,7 @@ export class UsersService {
   async findOne(userId: string): Promise<IUser> {
     const user = await this.usersModel.findById<IUser>(userId);
     if (!user) {
-      throw new HttpException('User not found', 404);
+      throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
     }
 
     return user;
