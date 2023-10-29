@@ -14,7 +14,10 @@ export class HttpExceptionFilter implements ExceptionFilter<Error> {
     const response = ctx.getResponse<Response>();
     // const request = ctx.getResponse<Request>();
     const status = exception?.getStatus ? exception?.getStatus() : 500;
-    const exResponse = exception.getResponse();
+    const exResponse =
+      typeof exception?.getResponse == 'function'
+        ? exception?.getResponse()
+        : exception?.getResponse;
     const data =
       typeof exResponse == 'object' ? exResponse['message'] : exResponse;
 

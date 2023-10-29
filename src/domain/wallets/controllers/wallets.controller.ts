@@ -1,10 +1,19 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ResponseHelper } from '../../../helpers/response.helper';
 import {
   CreateWalletDto,
   CreateWalletResponseDto,
 } from '../dto/create-wallet.dto';
+import { FundWalletDto, FundWalletResponseDto } from '../dto/fund-wallet.dto';
 import { GetWalletByIdDto } from '../dto/get-wallet-by-id.dto';
 import {
   TransferToAnotherWalletDto,
@@ -45,6 +54,20 @@ export class WalletsController {
     const response =
       await this.walletsService.transferToAnotherWallet(transferDto);
     return ResponseHelper.success(response, 'Transfer successful');
+  }
+
+  @Post('fund')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Credit wallet using payment code from paystack',
+  })
+  @ApiResponse({
+    status: 200,
+    type: FundWalletResponseDto,
+  })
+  async fundWallet(@Body() fundWalletDto: FundWalletDto) {
+    const wallet = await this.walletsService.fundWallet(fundWalletDto);
+    return ResponseHelper.success(wallet);
   }
 
   @Get(':walletId')

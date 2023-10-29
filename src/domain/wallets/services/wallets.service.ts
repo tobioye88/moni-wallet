@@ -1,9 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import {
+  PaystackResponse,
+  VerifyPaymentResponse,
+} from '../../../interfaces/paystack';
+import { PaystackUtil } from '../../../utils/paystack.util';
 import { UsersService } from '../../users/services/users.service';
 import { CreateWalletDto } from '../dto/create-wallet.dto';
+import { FundWalletDto } from '../dto/fund-wallet.dto';
 import { TransferToAnotherWalletDto } from '../dto/transfer-to-another-wallet';
+import {
+  FundsReference,
+  FundsReferenceDocument,
+} from '../entities/funds-ref.entity';
 import { WalletDocument } from '../entities/wallet.entity';
 import { IWallet } from '../interfaces/wallet.interface';
 import { Wallet } from './../entities/wallet.entity';
@@ -14,6 +24,9 @@ export class WalletsService {
     @InjectModel(Wallet.name)
     private readonly walletModel: Model<WalletDocument>,
     private readonly usersService: UsersService,
+    private readonly paystackHelper: PaystackUtil,
+    @InjectModel(FundsReference.name)
+    private readonly fundsReferenceModel: Model<FundsReferenceDocument>,
   ) {}
 
   async create(createWalletDto: CreateWalletDto) {
@@ -183,9 +196,9 @@ export class WalletsService {
         id: new Types.ObjectId(),
         amount,
         wallet: sourceWallet,
-        source_wallet_id: sourceWallet.id,
+        source_wallet_id: sourceWallet?.id,
         source_wallet_previous_balance: previousBalanceSource,
-        destination_wallet_id: destinationWallet.id,
+        destination_wallet_id: destinationWallet?.id,
         // destination_wallet_previous_balance: previousBalanceDestination, // internal use only
         type: transactionType,
         external_ref: externalRef,
@@ -197,9 +210,9 @@ export class WalletsService {
         id: new Types.ObjectId(),
         amount,
         wallet: destinationWallet,
-        source_wallet_id: sourceWallet.id,
+        source_wallet_id: sourceWallet?.id,
         source_wallet_previous_balance: previousBalanceSource,
-        destination_wallet_id: destinationWallet.id,
+        destination_wallet_id: destinationWallet?.id,
         // destination_wallet_previous_balance: previousBalanceDestination, // internal use only
         type: transactionType,
         external_ref: externalRef,
@@ -215,12 +228,63 @@ export class WalletsService {
     return `This action removes a #${id} wallet`;
   }
 
-  fundWallet() {
+  async fundWallet(fundWalletDto: FundWalletDto) {
     // check if wallet exist
+    const wallet = await this.findOne(fundWalletDto.wallet_id);
     // check if ref exist
+    const ref = await this.fundsReferenceModel.findOne({
+      ref: fundWalletDto.ref,
+    });
+    if (ref) {
+      throw new HttpException('Funds already credited to wallet', 400);
+    }
+    // get funds from paystack
+    let verifyResponse: PaystackResponse<VerifyPaymentResponse>;
+    try {
+      verifyResponse = await this.paystackHelper.verifyPaymentCode(
+        fundWalletDto.ref,
+      );
+    } catch (e) {
+      console.log(e);
+      throw new HttpException(
+        { message: 'Paystack validation error', data: null },
+        500,
+      );
+    }
+    const amount = verifyResponse.data.amount;
+    // if funds is not paid return status 400 pending funds payment
+    if (!verifyResponse.status || !verifyResponse.data.paid) {
+      throw new HttpException({ message: 'Unpaid invoice', data: null }, 400);
+    }
+    // if funds is paid mark update fundsReferenceModel and update wallet
+    await this.fundsReferenceModel.create({
+      ref: fundWalletDto.ref,
+      wallet: new Types.ObjectId(fundWalletDto.wallet_id),
+      amount,
+    });
     // update wallet
+    const newWalletBallance = verifyResponse.data.amount + wallet.balance;
+    const updatedWallet = await this.walletModel.findOneAndUpdate(
+      { _id: wallet._id },
+      {
+        $set: {
+          balance: newWalletBallance,
+          previous_balance: wallet.balance,
+        },
+      },
+      { new: true },
+    );
     // create credit transaction
-    // return wallet and credit transaction
+    // return credit transaction
+    return this.createTransaction(
+      updatedWallet,
+      null,
+      amount,
+      null,
+      wallet.previous_balance,
+      fundWalletDto.ref,
+      TransactionType.CREDIT,
+    );
   }
 }
 

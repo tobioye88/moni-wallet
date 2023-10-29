@@ -31,9 +31,5 @@ const WalletSchema = SchemaFactory.createForClass(Wallet);
 WalletSchema.index({
   user: 'text',
 });
-WalletSchema.pre('find', function (next) {
-  this.select('-__v');
-  next();
-});
 
 export { WalletSchema };

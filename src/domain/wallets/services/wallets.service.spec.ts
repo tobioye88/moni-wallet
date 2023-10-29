@@ -2,11 +2,18 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Model } from 'mongoose';
+import {
+  PaystackResponse,
+  VerifyPaymentResponse,
+} from '../../../interfaces/paystack';
+import { PaystackUtil } from '../../../utils/paystack.util';
 import { getMockUser } from '../../users/controllers/users.controller.spec';
 import { IUser } from '../../users/interfaces/user.interface';
 import { UsersService } from '../../users/services/users.service';
 import { CreateWalletDto } from '../dto/create-wallet.dto';
+import { FundWalletDto } from '../dto/fund-wallet.dto';
 import { TransferToAnotherWalletDto } from '../dto/transfer-to-another-wallet';
+import { FundsReference } from '../entities/funds-ref.entity';
 import { Wallet, WalletDocument } from '../entities/wallet.entity';
 import { IWallet } from '../interfaces/wallet.interface';
 import { TransactionType, WalletsService } from './wallets.service';
@@ -15,6 +22,8 @@ describe('WalletsService', () => {
   let walletsService: WalletsService;
   let usersService: UsersService;
   let walletModel: Model<WalletDocument>;
+  let fundsReferenceModel: Model<FundsReference>;
+  let paystackHelper: PaystackUtil;
   const mockSession = {
     startTransaction: jest.fn(),
     commitTransaction: jest.fn(),
@@ -46,12 +55,30 @@ describe('WalletsService', () => {
             startSession: jest.fn(),
           },
         },
+        {
+          provide: PaystackUtil,
+          useValue: {
+            verifyPaymentCode: jest.fn(),
+          },
+        },
+        {
+          provide: getModelToken(FundsReference.name),
+          useValue: {
+            create: jest.fn(),
+            findOne: jest.fn(),
+            findOneAndUpdate: jest.fn(),
+            findById: jest.fn(),
+            populate: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     walletsService = module.get<WalletsService>(WalletsService);
     usersService = module.get<UsersService>(UsersService);
     walletModel = module.get(getModelToken(Wallet.name));
+    fundsReferenceModel = module.get(getModelToken(FundsReference.name));
+    paystackHelper = module.get<PaystackUtil>(PaystackUtil);
   });
 
   describe('create', () => {
@@ -225,6 +252,189 @@ describe('WalletsService', () => {
       );
       await expect(walletsService.findOne(walletId)).rejects.toThrowError(
         new HttpException('Wallet not found', HttpStatus.NOT_FOUND),
+      );
+    });
+  });
+
+  describe('fundWallet', () => {
+    it('should successfully fund the wallet', async () => {
+      const fundWalletDto: FundWalletDto = {
+        wallet_id: '653e0eb2c49fa7dcec988f65',
+        ref: 'PRQ_8iiwahf4scgtkm2',
+      };
+
+      const wallet = {
+        _id: fundWalletDto.wallet_id,
+        balance: 500,
+        previous_balance: 500,
+      };
+
+      const verifyResponse: PaystackResponse<VerifyPaymentResponse> = {
+        status: true,
+        data: {
+          amount: 100,
+          paid: true,
+          id: 0,
+          domain: '',
+          currency: '',
+          due_date: '',
+          has_invoice: false,
+          invoice_number: 0,
+          description: '',
+          pdf_url: undefined,
+          line_items: [],
+          tax: [],
+          request_code: '',
+          status: '',
+          paid_at: undefined,
+          metadata: undefined,
+          notifications: [],
+          offline_reference: '',
+          customer: undefined,
+          created_at: '',
+          integration: undefined,
+          pending_amount: 0,
+        },
+        message: '',
+      };
+
+      const updatedWallet = {
+        id: 'wallet_id',
+        balance: 600,
+        previous_balance: 500,
+      };
+
+      jest.spyOn(walletModel, 'findById').mockImplementation(
+        () =>
+          ({
+            populate: () => getMockWallet() as any,
+          }) as any,
+      );
+      jest.spyOn(walletModel, 'findOne').mockResolvedValue(wallet);
+      jest.spyOn(fundsReferenceModel, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(paystackHelper, 'verifyPaymentCode')
+        .mockResolvedValue(verifyResponse);
+      jest.spyOn(fundsReferenceModel, 'create').mockResolvedValue(null);
+      jest
+        .spyOn(walletModel, 'findOneAndUpdate')
+        .mockResolvedValue(updatedWallet as any);
+
+      const result = await walletsService.fundWallet(fundWalletDto);
+
+      expect(result).toBeDefined();
+      expect(result.type).toBe(TransactionType.CREDIT);
+      expect(result.amount).toBe(100);
+    });
+
+    it('should throw an error if funds are already credited to the wallet', async () => {
+      const fundWalletDto: FundWalletDto = {
+        wallet_id: 'valid_wallet_id_here',
+        ref: 'existing_reference_here',
+      };
+
+      // const wallet = {
+      //   _id: fundWalletDto.wallet_id,
+      //   balance: 500,
+      //   previous_balance: 500,
+      // };
+
+      jest.spyOn(walletModel, 'findById').mockImplementation(
+        () =>
+          ({
+            populate: () => getMockWallet() as any,
+          }) as any,
+      );
+      jest.spyOn(fundsReferenceModel, 'findOne').mockResolvedValue({
+        ref: 'mock_ref',
+        amount: 1000,
+        wallet: 'mock_wallet_ref',
+      });
+
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(HttpException);
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(
+        new HttpException(
+          'Funds already credited to wallet',
+          HttpStatus.BAD_REQUEST,
+        ),
+      );
+    });
+
+    it('should throw an error if Paystack validation fails', async () => {
+      const fundWalletDto: FundWalletDto = {
+        wallet_id: 'valid_wallet_id_here',
+        ref: 'valid_reference_here',
+      };
+
+      const wallet = {
+        _id: fundWalletDto.wallet_id,
+        balance: 500,
+        previous_balance: 500,
+      };
+
+      jest.spyOn(walletModel, 'findById').mockImplementation(
+        () =>
+          ({
+            populate: () => getMockWallet() as any,
+          }) as any,
+      );
+      jest.spyOn(walletModel, 'findOne').mockResolvedValue(wallet);
+      jest.spyOn(fundsReferenceModel, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(paystackHelper, 'verifyPaymentCode')
+        .mockRejectedValue(new Error('Paystack validation error'));
+
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(HttpException);
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(
+        new HttpException(
+          { message: 'Paystack validation error', data: null },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+
+    it('should throw an error if Paystack invoice is unpaid', async () => {
+      const fundWalletDto: FundWalletDto = {
+        wallet_id: 'valid_wallet_id_here',
+        ref: 'valid_reference_here',
+      };
+
+      const wallet = {
+        _id: fundWalletDto.wallet_id,
+        balance: 500,
+        previous_balance: 500,
+      };
+
+      jest.spyOn(walletModel, 'findById').mockImplementation(
+        () =>
+          ({
+            populate: () => getMockWallet() as any,
+          }) as any,
+      );
+      jest.spyOn(walletModel, 'findOne').mockResolvedValue(wallet);
+      jest.spyOn(fundsReferenceModel, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(paystackHelper, 'verifyPaymentCode')
+        .mockResolvedValue({ status: true, data: { paid: false } } as any);
+
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(HttpException);
+      await expect(
+        walletsService.fundWallet(fundWalletDto),
+      ).rejects.toThrowError(
+        new HttpException(
+          { message: 'Unpaid invoice', data: null },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
       );
     });
   });
