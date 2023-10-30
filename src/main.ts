@@ -11,8 +11,8 @@ async function bootstrap() {
   // Global Config
   const configService = app.get<ConfigService>(ConfigService);
   const PORT = configService.get<number>('port', 8008);
-  const APP_NAME = configService.get<string>('app.name', 'APP');
-  const NODE_ENV = configService.get<string>('app.env', 'DEVELOPMENT');
+  const APP_NAME = configService.get<string>('APP_NAME', 'APP');
+  const NODE_ENV = configService.get<string>('NODE_ENV', 'DEVELOPMENT');
 
   // Swagger
   const swaggerConfig = new DocumentBuilder()
